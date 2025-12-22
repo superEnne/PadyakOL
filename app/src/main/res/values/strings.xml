@@ -3,7 +3,7 @@
 
     <!-- REPLACE THESE WITH YOUR ACTUAL IDS FROM FACEBOOK DEVELOPER CONSOLE -->
     <string name="facebook_app_id">1567837727792409</string>
-    <string name="fb_login_protocol_scheme">fbYOUR_FACEBOOK_APP_ID</string>
-    <string name="facebook_client_token">YOUR_FACEBOOK_CLIENT_TOKEN</string>
+    <string name="fb_login_protocol_scheme">fb1567837727792409</string>
+    <string name="facebook_client_token">4a031be639371700e9a896a235ed645e</string>
     <string name="default_web_client_id">789820536472-davlc1fge5il12f056d3e4laeeoh7v8r.apps.googleusercontent.com</string>
 </resources>
