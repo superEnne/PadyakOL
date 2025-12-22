@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "789820536472",
+    "project_id": "padyakol-52740",
+    "storage_bucket": "padyakol-52740.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:789820536472:android:f62b625f0e4433dce282ed",
+        "android_client_info": {
+          "package_name": "com.example.padyakol"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCk3FjFoZhbD1-D_R6ykNDPc-PfTcNz57k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

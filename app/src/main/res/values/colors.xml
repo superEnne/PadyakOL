@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- PadyakOL Theme - Shades of Blue -->
+    <!-- Dark Navy for text/headers -->
+    <color name="padyak_primary">#0D47A1</color>
+    <!-- Bright Blue for Buttons/Accents -->
+    <color name="padyak_accent">#2979FF</color>
+    <!-- Very light blue for background -->
+    <color name="padyak_background">#E3F2FD</color>
+    <!-- Grey for input hints -->
+    <color name="padyak_grey">#78909C</color>
+</resources>
