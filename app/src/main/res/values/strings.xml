@@ -1,7 +1,8 @@
 <resources>
     <string name="app_name">PadyakOL</string>
+    <!-- Replace with your actual Google Maps API Key -->
+    <string name="google_maps_key">AIzaSyDJAFJ8-nCLsgbDtzmnjok9FgSpU6Us3zg</string>
 
-    <!-- REPLACE THESE WITH YOUR ACTUAL IDS FROM FACEBOOK DEVELOPER CONSOLE -->
     <string name="facebook_app_id">1567837727792409</string>
     <string name="fb_login_protocol_scheme">fb1567837727792409</string>
     <string name="facebook_client_token">4a031be639371700e9a896a235ed645e</string>

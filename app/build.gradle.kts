@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.example.padyakol"
-    compileSdk = 36
+    compileSdk = 36 // Updated to 36 to fix dependency errors
 
     defaultConfig {
         applicationId = "com.example.padyakol"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 36 // Updated to 36 to match compileSdk
         versionCode = 1
         versionName = "1.0"
 
@@ -40,14 +40,17 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
 
-    // --- ADD THESE LINES TO FX THE ERRORS ---
-    implementation("com.google.android.gms:play-services-auth:21.4.0") // Fixes GoogleSignIn imports
-    implementation("com.facebook.android:facebook-login:18.1.3")       // Fixes Facebook imports
-    // ----------------------------------------
+    // Maps and Location (Required for the Main Page functionality)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
+
+    // Auth Fixes
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("com.facebook.android:facebook-login:17.0.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation(platform("com.google.firebase:firebase-bom:34.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
 }
