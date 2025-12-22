@@ -41,8 +41,8 @@ dependencies {
     implementation(libs.firebase.firestore)
 
     // --- ADD THESE LINES TO FIX THE ERRORS ---
-    implementation("com.google.android.gms:play-services-auth:21.0.0") // Fixes GoogleSignIn imports
-    implementation("com.facebook.android:facebook-login:16.2.0")       // Fixes Facebook imports
+    implementation("com.google.android.gms:play-services-auth:21.4.0") // Fixes GoogleSignIn imports
+    implementation("com.facebook.android:facebook-login:18.1.3")       // Fixes Facebook imports
     // ----------------------------------------
 
     testImplementation(libs.junit)
