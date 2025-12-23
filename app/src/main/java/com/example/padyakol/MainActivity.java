@@ -3,11 +3,14 @@ package com.example.padyakol;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
+import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,9 +33,9 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FieldValue;
 
@@ -50,6 +53,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // UI
     private TextView tvSessionDistance, tvTotalDistance;
     private Button btnRideToggle;
+    private ImageButton btnSettings;
+    private BottomNavigationView bottomNavigationView;
 
     // Data
     private boolean isTracking = false;
@@ -76,8 +81,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (currentUser == null) {
             // Not logged in? Go back to Login
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
+            logout();
             return;
         }
         userId = currentUser.getUid();
@@ -86,6 +90,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         tvSessionDistance = findViewById(R.id.tvSessionDistance);
         tvTotalDistance = findViewById(R.id.tvTotalDistance);
         btnRideToggle = findViewById(R.id.btnRideToggle);
+        btnSettings = findViewById(R.id.btnSettings);
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
 
         // 3. Initialize Map
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -99,8 +105,61 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // 4. Load initial data
         loadUserData();
 
-        // 5. Setup Buttons
+        // 5. Setup Listeners
         btnRideToggle.setOnClickListener(v -> toggleTracking());
+        btnSettings.setOnClickListener(v -> showSettingsMenu(v));
+
+        // Bottom Navigation Listener (Functionality placeholders)
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.nav_log) {
+                Toast.makeText(this, "Travel Log coming soon", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (id == R.id.nav_route) {
+                Toast.makeText(this, "Travel Advisor coming soon", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (id == R.id.nav_friends) {
+                Toast.makeText(this, "Friends coming soon", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (id == R.id.nav_account) {
+                Toast.makeText(this, "Account coming soon", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            return false;
+        });
+    }
+
+    // --- SETTINGS MENU ---
+    private void showSettingsMenu(View view) {
+        PopupMenu popup = new PopupMenu(this, view);
+        popup.getMenuInflater().inflate(R.menu.settings_menu, popup.getMenu());
+
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.action_general) {
+                Toast.makeText(MainActivity.this, "General Settings", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (id == R.id.action_help) {
+                Toast.makeText(MainActivity.this, "Help Section", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (id == R.id.action_about) {
+                Toast.makeText(MainActivity.this, "PadyakOL v1.0", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (id == R.id.action_logout) {
+                logout();
+                return true;
+            }
+            return false;
+        });
+        popup.show();
+    }
+
+    private void logout() {
+        mAuth.signOut();
+        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
     }
 
     // --- FIREBASE LOGIC ---
@@ -125,7 +184,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .update("totalKmTraveled", FieldValue.increment(sessionDistanceKm))
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Ride saved!", Toast.LENGTH_SHORT).show();
-                    // Update local total immediately for UI responsiveness
+                    // Update local total immediately
                     totalDistanceKm += sessionDistanceKm;
                     tvTotalDistance.setText(String.format(Locale.US, "%.1f km", totalDistanceKm));
                     // Reset session
@@ -158,6 +217,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             tvSessionDistance.setText("0.0 km");
             lastLocation = null;
 
+            // Start updates specifically for tracking
             startLocationUpdates();
         } else {
             requestPermission();
@@ -169,13 +229,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         btnRideToggle.setText("Start Ride");
         btnRideToggle.setBackgroundResource(R.drawable.bg_button_gradient);
 
-        stopLocationUpdates();
+        // Don't stop location updates completely, just stop saving points
+        // We might want to keep updating the user's dot on the map
+
         saveRideData();
     }
 
     private void startLocationUpdates() {
         LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
-                .setMinUpdateDistanceMeters(10) // Only update if moved 10 meters
+                .setMinUpdateDistanceMeters(5)
                 .build();
 
         locationCallback = new LocationCallback() {
@@ -195,29 +257,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void stopLocationUpdates() {
-        if (fusedLocationClient != null && locationCallback != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
-        }
-    }
-
     private void updateTracking(Location location) {
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
-        // Move camera to user
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17f));
-
+        // Always move camera if tracking is active
         if (isTracking) {
-            if (lastLocation != null) {
-                // Calculate distance
-                double distanceInMeters = lastLocation.distanceTo(location);
-                sessionDistanceKm += (distanceInMeters / 1000.0);
-                tvSessionDistance.setText(String.format(Locale.US, "%.2f km", sessionDistanceKm));
-            }
+            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
 
-            lastLocation = location;
-            pathPoints.add(latLng);
-            drawRoute();
+            if (lastLocation != null) {
+                double distanceInMeters = lastLocation.distanceTo(location);
+                // Filter out small jitters (e.g., less than 2 meters)
+                if (distanceInMeters > 2) {
+                    sessionDistanceKm += (distanceInMeters / 1000.0);
+                    tvSessionDistance.setText(String.format(Locale.US, "%.2f km", sessionDistanceKm));
+
+                    lastLocation = location;
+                    pathPoints.add(latLng);
+                    drawRoute();
+                }
+            } else {
+                lastLocation = location;
+                pathPoints.add(latLng);
+            }
         }
     }
 
@@ -227,7 +288,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         PolylineOptions polylineOptions = new PolylineOptions()
                 .addAll(pathPoints)
-                .width(12f)
+                .width(15f)
                 .color(ContextCompat.getColor(this, R.color.padyak_accent))
                 .geodesic(true);
         currentPolyline = mMap.addPolyline(polylineOptions);
@@ -240,23 +301,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap = googleMap;
 
         if (checkPermission()) {
-            mMap.setMyLocationEnabled(true);
-            // Get last known location to center map initially
-            fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
-                if (location != null) {
-                    LatLng loc = new LatLng(location.getLatitude(), location.getLongitude());
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(loc, 15f));
-                }
-            });
+            setupMapUserLocation();
         } else {
             requestPermission();
         }
+    }
 
-        // Route Suggestion (Placeholder logic)
-        findViewById(R.id.cardSearch).setOnClickListener(v -> {
-            Toast.makeText(this, "Safe Route feature coming soon!", Toast.LENGTH_SHORT).show();
-            // Future implementation: Open Place Autocomplete -> Get Directions API with "Avoid highways"
-        });
+    private void setupMapUserLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            mMap.setMyLocationEnabled(true);
+            mMap.getUiSettings().setMyLocationButtonEnabled(true); // Allow user to center themselves
+
+            // Get immediate location to center the camera upon opening app
+            fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
+                if (location != null) {
+                    LatLng loc = new LatLng(location.getLatitude(), location.getLongitude());
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(loc, 16f));
+                }
+            });
+        }
     }
 
     // --- PERMISSIONS ---
@@ -274,11 +337,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (checkPermission()) {
-                    mMap.setMyLocationEnabled(true);
-                }
+                setupMapUserLocation();
             } else {
-                Toast.makeText(this, "Location permission needed for tracking", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Location permission needed for maps", Toast.LENGTH_LONG).show();
             }
         }
     }

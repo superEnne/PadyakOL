@@ -4,22 +4,27 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/padyak_background"
     tools:context=".MainActivity">
 
-    <!-- Google Map Fragment -->
+    <!-- 1. Google Map (Full Screen Background) -->
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_weight="1" />
 
-    <!-- Top Bar: Location/Search -->
+    <!-- 2. Top Bar (Floating) -->
     <androidx.cardview.widget.CardView
-        android:id="@+id/cardSearch"
+        android:id="@+id/cardTopBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        app:cardCornerRadius="25dp"
+        app:cardBackgroundColor="@android:color/white"
+        app:cardCornerRadius="12dp"
         app:cardElevation="6dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -27,37 +32,52 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="50dp"
+            android:layout_height="56dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="16dp"
-            android:paddingEnd="16dp">
+            android:paddingEnd="8dp">
 
+            <!-- Search Icon -->
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@android:drawable/ic_menu_search"
-                app:tint="@color/padyak_primary" />
+                app:tint="@color/padyak_grey" />
 
+            <!-- Search Text (Placeholder) -->
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:layout_marginStart="12dp"
                 android:text="Find a safe route..."
                 android:textColor="@color/padyak_grey"
                 android:textSize="16sp" />
 
+            <!-- Settings Button -->
+            <ImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_settings"
+                app:tint="@color/padyak_primary"
+                android:contentDescription="Settings" />
+
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- Bottom Control Panel -->
+    <!-- 3. Stats & Controls (Floating above Bottom Nav) -->
     <androidx.cardview.widget.CardView
+        android:id="@+id/cardStats"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        app:cardCornerRadius="20dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="16dp"
+        app:cardCornerRadius="16dp"
         app:cardElevation="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -65,14 +85,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="16dp">
 
-            <!-- Stats Row -->
+            <!-- Distance Stats -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:baselineAligned="false">
+                android:baselineAligned="false"
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -80,21 +101,19 @@
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center">
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="SESSION"
-                        android:textSize="12sp"
+                        android:textSize="11sp"
                         android:textColor="@color/padyak_grey"
-                        android:textStyle="bold"/>
-
+                        android:letterSpacing="0.1"/>
                     <TextView
                         android:id="@+id/tvSessionDistance"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0.0 km"
-                        android:textSize="24sp"
+                        android:textSize="20sp"
                         android:textColor="@color/padyak_primary"
                         android:textStyle="bold"/>
                 </LinearLayout>
@@ -102,8 +121,7 @@
                 <View
                     android:layout_width="1dp"
                     android:layout_height="match_parent"
-                    android:background="#E0E0E0"
-                    android:layout_marginHorizontal="10dp"/>
+                    android:background="#E0E0E0" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -111,40 +129,51 @@
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center">
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="LIFETIME"
-                        android:textSize="12sp"
+                        android:text="TOTAL"
+                        android:textSize="11sp"
                         android:textColor="@color/padyak_grey"
-                        android:textStyle="bold"/>
-
+                        android:letterSpacing="0.1"/>
                     <TextView
                         android:id="@+id/tvTotalDistance"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0.0 km"
-                        android:textSize="24sp"
+                        android:textSize="20sp"
                         android:textColor="@color/padyak_primary"
                         android:textStyle="bold"/>
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Action Button -->
+            <!-- Start/Stop Button -->
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnRideToggle"
                 android:layout_width="match_parent"
-                android:layout_height="55dp"
-                android:layout_marginTop="20dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_button_gradient"
                 android:text="Start Ride"
                 android:textAllCaps="false"
-                android:textSize="18sp"
+                android:textSize="16sp"
                 android:textColor="@android:color/white"
                 android:textStyle="bold"/>
-
         </LinearLayout>
     </androidx.cardview.widget.CardView>
+
+    <!-- 4. Bottom Navigation View -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        app:elevation="16dp"
+        app:menu="@menu/bottom_nav_menu"
+        app:labelVisibilityMode="labeled"
+        app:itemIconTint="@color/padyak_primary"
+        app:itemTextColor="@color/padyak_primary"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
