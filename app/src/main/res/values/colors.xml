@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base Colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- PadyakOL Theme - Shades of Blue -->
-    <!-- Dark Navy for text/headers -->
-    <color name="padyak_primary">#0D47A1</color>
-    <!-- Bright Blue for Buttons/Accents -->
-    <color name="padyak_accent">#2979FF</color>
-    <!-- Very light blue for background -->
-    <color name="padyak_background">#E3F2FD</color>
-    <!-- Grey for input hints -->
-    <color name="padyak_grey">#78909C</color>
+    <!-- PadyakOL Brand Colors -->
+    <color name="padyak_primary">#0D47A1</color> <!-- Deep Blue -->
+    <color name="padyak_accent">#2196F3</color>  <!-- Bright Blue -->
+    <color name="padyak_background">#F5F5F5</color> <!-- Light Grey Background -->
+    <color name="padyak_grey">#757575</color>
+    <color name="padyak_light_blue">#BBDEFB</color>
+
+    <!-- UI Specific -->
+    <color name="nav_item_selected">#0D47A1</color>
+    <color name="nav_item_unselected">#757575</color>
 </resources>
