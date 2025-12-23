@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.padyakol.adapters.TravelLogAdapter;
 import com.example.padyakol.models.Ride;
+import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -36,6 +37,17 @@ public class TravelLogFragment extends Fragment {
 
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Pre-initialize maps to avoid layout inflation lag/crash in Adapter
+        try {
+            MapsInitializer.initialize(requireContext());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @Nullable
     @Override
@@ -83,6 +95,8 @@ public class TravelLogFragment extends Fragment {
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!isAdded()) return; // Fix crash if fragment removed before data loads
+
                     progressBar.setVisibility(View.GONE);
                     rideList.clear();
 
@@ -96,6 +110,7 @@ public class TravelLogFragment extends Fragment {
                     }
                 })
                 .addOnFailureListener(e -> {
+                    if (!isAdded()) return;
                     progressBar.setVisibility(View.GONE);
                     Toast.makeText(getContext(), "Error loading logs", Toast.LENGTH_SHORT).show();
                 });

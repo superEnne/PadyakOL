@@ -8,17 +8,12 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.transition.AutoTransition;
-import androidx.transition.TransitionManager;
 
 import com.example.padyakol.R;
 import com.example.padyakol.models.Ride;
 import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
-import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -72,35 +67,40 @@ public class TravelLogAdapter extends RecyclerView.Adapter<TravelLogAdapter.Ride
 
         // Map Setup for Expanded View
         if (holder.mapView != null) {
-            // FIX: Removed mapView.onCreate(null) from here. It is now in the ViewHolder constructor.
+            // Ensure MapView is visible/active only if expanded to save memory
+            // But we initialize it anyway
 
             holder.mapView.getMapAsync(googleMap -> {
-                MapsInitializer.initialize(context);
+                try {
+                    MapsInitializer.initialize(context);
+                    googleMap.clear(); // Clear previous polylines if view is recycled
+                    googleMap.setMapType(com.google.android.gms.maps.GoogleMap.MAP_TYPE_NORMAL);
 
-                googleMap.clear(); // Clear previous polylines if view is recycled
+                    // Draw Route
+                    if (ride.getRoutePoints() != null && !ride.getRoutePoints().isEmpty()) {
+                        PolylineOptions options = new PolylineOptions().width(10).color(context.getColor(R.color.padyak_accent));
+                        com.google.android.gms.maps.model.LatLngBounds.Builder builder = new com.google.android.gms.maps.model.LatLngBounds.Builder();
 
-                // Draw Route
-                if (ride.getRoutePoints() != null && !ride.getRoutePoints().isEmpty()) {
-                    PolylineOptions options = new PolylineOptions().width(10).color(context.getColor(R.color.padyak_accent));
-                    com.google.android.gms.maps.model.LatLngBounds.Builder builder = new com.google.android.gms.maps.model.LatLngBounds.Builder();
+                        for (com.google.firebase.firestore.GeoPoint p : ride.getRoutePoints()) {
+                            LatLng latLng = new LatLng(p.getLatitude(), p.getLongitude());
+                            options.add(latLng);
+                            builder.include(latLng);
+                        }
 
-                    for (com.google.firebase.firestore.GeoPoint p : ride.getRoutePoints()) {
-                        LatLng latLng = new LatLng(p.getLatitude(), p.getLongitude());
-                        options.add(latLng);
-                        builder.include(latLng);
+                        googleMap.addPolyline(options);
+                        googleMap.getUiSettings().setAllGesturesEnabled(false); // Static map
+
+                        // Move camera to show route
+                        try {
+                            googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 50));
+                        } catch (Exception e) {
+                            // Handle single point or layout not ready
+                            LatLng latLng = new LatLng(ride.getRoutePoints().get(0).getLatitude(), ride.getRoutePoints().get(0).getLongitude());
+                            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f));
+                        }
                     }
-
-                    googleMap.addPolyline(options);
-                    googleMap.getUiSettings().setAllGesturesEnabled(false); // Static map
-
-                    // Move camera to show route
-                    try {
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 50));
-                    } catch (Exception e) {
-                        // Handle single point case
-                        LatLng latLng = new LatLng(ride.getRoutePoints().get(0).getLatitude(), ride.getRoutePoints().get(0).getLongitude());
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f));
-                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             });
         }
@@ -137,10 +137,15 @@ public class TravelLogAdapter extends RecyclerView.Adapter<TravelLogAdapter.Ride
             layoutExpanded = itemView.findViewById(R.id.layoutExpanded);
             mapView = itemView.findViewById(R.id.mapViewLog);
 
-            // FIX: Initialize MapView lifecycle here, once per ViewHolder creation.
+            // FIX: Robust initialization
             if (mapView != null) {
-                mapView.onCreate(null);
-                mapView.onResume();
+                try {
+                    mapView.onCreate(null);
+                    mapView.onResume();
+                } catch (Exception e) {
+                    // Prevent crash if map fails to init immediately
+                    e.printStackTrace();
+                }
             }
         }
     }
