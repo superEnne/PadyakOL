@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -16,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.padyakol.adapters.TravelLogAdapter;
 import com.example.padyakol.models.Ride;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -28,6 +30,7 @@ public class TravelLogFragment extends Fragment {
     private RecyclerView recyclerView;
     private ProgressBar progressBar;
     private TextView tvEmptyState;
+    private Button btnBackToMap;
     private TravelLogAdapter adapter;
     private List<Ride> rideList;
 
@@ -42,6 +45,7 @@ public class TravelLogFragment extends Fragment {
         recyclerView = view.findViewById(R.id.recyclerTravelLog);
         progressBar = view.findViewById(R.id.progressBarLog);
         tvEmptyState = view.findViewById(R.id.tvEmptyState);
+        btnBackToMap = view.findViewById(R.id.btnBackToMap);
 
         // Setup Recycler
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -52,6 +56,17 @@ public class TravelLogFragment extends Fragment {
         // Firebase
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
+
+        // Button Listener: Go back to map
+        btnBackToMap.setOnClickListener(v -> {
+            if (getActivity() != null) {
+                // Find the BottomNavigation in MainActivity and select the first item (Advisor/Home)
+                BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
+                if (bottomNav != null) {
+                    bottomNav.setSelectedItemId(R.id.nav_route);
+                }
+            }
+        });
 
         loadTravelLogs();
 

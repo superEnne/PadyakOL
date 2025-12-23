@@ -3,14 +3,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/padyak_background"
-    android:padding="8dp">
+    android:paddingTop="80dp">
+    <!-- Added paddingTop so content doesn't hide behind the new floating Search Bar in Main Activity -->
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerTravelLog"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingBottom="80dp"/>
+        android:paddingBottom="80dp"
+        android:paddingHorizontal="8dp"/>
 
     <ProgressBar
         android:id="@+id/progressBarLog"
@@ -28,5 +30,19 @@
         android:gravity="center"
         android:textColor="@color/padyak_grey"
         android:visibility="gone"/>
+
+    <!-- Floating Button to go back to Start Ride -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnBackToMap"
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_button_gradient"
+        android:text="Start a New Ride"
+        android:paddingHorizontal="32dp"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
+        android:elevation="8dp"/>
 
 </FrameLayout>

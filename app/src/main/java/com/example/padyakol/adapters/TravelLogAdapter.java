@@ -72,9 +72,12 @@ public class TravelLogAdapter extends RecyclerView.Adapter<TravelLogAdapter.Ride
 
         // Map Setup for Expanded View
         if (holder.mapView != null) {
-            holder.mapView.onCreate(null);
+            // FIX: Removed mapView.onCreate(null) from here. It is now in the ViewHolder constructor.
+
             holder.mapView.getMapAsync(googleMap -> {
                 MapsInitializer.initialize(context);
+
+                googleMap.clear(); // Clear previous polylines if view is recycled
 
                 // Draw Route
                 if (ride.getRoutePoints() != null && !ride.getRoutePoints().isEmpty()) {
@@ -103,7 +106,6 @@ public class TravelLogAdapter extends RecyclerView.Adapter<TravelLogAdapter.Ride
         }
 
         // --- Expand/Collapse Logic ---
-        boolean isExpanded = (position == holder.getAdapterPosition() && holder.isExpanded); // Simplified logic
         holder.layoutExpanded.setVisibility(holder.isExpanded ? View.VISIBLE : View.GONE);
         holder.tvViewMore.setText(holder.isExpanded ? "Show Less" : "View Details");
 
@@ -134,6 +136,12 @@ public class TravelLogAdapter extends RecyclerView.Adapter<TravelLogAdapter.Ride
             tvViewMore = itemView.findViewById(R.id.tvViewMore);
             layoutExpanded = itemView.findViewById(R.id.layoutExpanded);
             mapView = itemView.findViewById(R.id.mapViewLog);
+
+            // FIX: Initialize MapView lifecycle here, once per ViewHolder creation.
+            if (mapView != null) {
+                mapView.onCreate(null);
+                mapView.onResume();
+            }
         }
     }
 }
