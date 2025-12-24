@@ -55,14 +55,39 @@ public class TravelLogFragment extends Fragment {
         adapter = new TravelLogAdapter(requireContext(), rideList, ride -> {
             // This code runs when a user clicks a log card
             try {
+                if (ride == null) {
+                    Toast.makeText(getContext(), "Error: Ride data is missing.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 if (ride.getRoutePoints() != null && !ride.getRoutePoints().isEmpty()) {
-                    RideDetailDialogFragment dialog = RideDetailDialogFragment.newInstance(ride);
-                    dialog.show(getChildFragmentManager(), "RideDetail");
+                    // Check if route points have valid coordinates
+                    boolean hasValidPoints = false;
+                    try {
+                        if (ride.getRoutePoints().get(0) != null) {
+                            hasValidPoints = true;
+                        }
+                    } catch (Exception e) {
+                        Log.e("TravelLog", "Invalid points check", e);
+                    }
+
+                    if (hasValidPoints) {
+                        RideDetailDialogFragment dialog = RideDetailDialogFragment.newInstance(ride);
+                        // Use try-catch for showing dialog to catch any lifecycle or serialization issues
+                        try {
+                            dialog.show(getChildFragmentManager(), "RideDetail");
+                        } catch (Exception e) {
+                            Log.e("TravelLog", "Error showing dialog", e);
+                            Toast.makeText(getContext(), "Error displaying map details.", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(getContext(), "Route data is incomplete.", Toast.LENGTH_SHORT).show();
+                    }
                 } else {
-                    Toast.makeText(getContext(), "No route data available for this ride.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "No map route recorded for this ride.", Toast.LENGTH_SHORT).show();
                 }
             } catch (Exception e) {
-                Log.e("TravelLog", "Error opening details: ", e);
+                Log.e("TravelLog", "CRITICAL ERROR opening details: ", e);
                 Toast.makeText(getContext(), "Unable to open ride details.", Toast.LENGTH_SHORT).show();
             }
         });
