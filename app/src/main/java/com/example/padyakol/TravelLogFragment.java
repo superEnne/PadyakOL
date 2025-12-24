@@ -17,7 +17,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.padyakol.adapters.TravelLogAdapter;
 import com.example.padyakol.models.Ride;
-import com.google.android.gms.maps.MapsInitializer;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -37,19 +36,6 @@ public class TravelLogFragment extends Fragment {
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
 
-    @Override
-    public void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        // Pre-initialize maps using Application context if possible, or Activity
-        if (getContext() != null) {
-            try {
-                MapsInitializer.initialize(getContext().getApplicationContext());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -63,8 +49,18 @@ public class TravelLogFragment extends Fragment {
         // Setup Recycler
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         rideList = new ArrayList<>();
-        // Use requireContext() for safety
-        adapter = new TravelLogAdapter(requireContext(), rideList);
+
+        // --- ADAPTER SETUP WITH CLICK LISTENER ---
+        adapter = new TravelLogAdapter(requireContext(), rideList, ride -> {
+            // This code runs when a user clicks a log card
+            if (ride.getRoutePoints() != null && !ride.getRoutePoints().isEmpty()) {
+                RideDetailDialogFragment dialog = RideDetailDialogFragment.newInstance(ride);
+                dialog.show(getChildFragmentManager(), "RideDetail");
+            } else {
+                Toast.makeText(getContext(), "No map data for this ride", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         recyclerView.setAdapter(adapter);
 
         // Firebase
@@ -78,13 +74,11 @@ public class TravelLogFragment extends Fragment {
             }
         });
 
-        // Always reload logs when view is created to get latest
         loadTravelLogs();
 
         return view;
     }
 
-    // Refresh logs when the fragment becomes visible (since we use hide/show now)
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
@@ -115,7 +109,7 @@ public class TravelLogFragment extends Fragment {
                         List<Ride> rides = queryDocumentSnapshots.toObjects(Ride.class);
                         rideList.addAll(rides);
                         adapter.notifyDataSetChanged();
-                        tvEmptyState.setVisibility(View.   GONE);
+                        tvEmptyState.setVisibility(View.GONE);
                     } else {
                         tvEmptyState.setVisibility(View.VISIBLE);
                     }
@@ -123,7 +117,6 @@ public class TravelLogFragment extends Fragment {
                 .addOnFailureListener(e -> {
                     if (!isAdded()) return;
                     progressBar.setVisibility(View.GONE);
-                    // Toast.makeText(getContext(), "Error loading logs", Toast.LENGTH_SHORT).show();
                 });
     }
 }
