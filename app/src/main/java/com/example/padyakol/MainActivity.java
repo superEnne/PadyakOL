@@ -11,11 +11,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -26,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
     // Fragments
     private HomeFragment homeFragment;
     private TravelLogFragment travelLogFragment;
+    private Fragment activeFragment;
 
     // Firebase
     private FirebaseAuth mAuth;
@@ -49,22 +50,25 @@ public class MainActivity extends AppCompatActivity {
         btnSettings = findViewById(R.id.btnSettings);
 
         // 3. Init Fragments
+        // We initialize them once and keep them alive
         homeFragment = new HomeFragment();
         travelLogFragment = new TravelLogFragment();
 
-        // 4. Default Load Home
-        loadFragment(homeFragment);
+        // 4. Default Load Home (Add it initially)
+        FragmentManager fm = getSupportFragmentManager();
+        fm.beginTransaction().add(R.id.fragment_container, homeFragment, "HOME").commit();
+        activeFragment = homeFragment;
         tvPageTitle.setText("Ride Dashboard");
 
-        // 5. Navigation Listener
+        // 5. Navigation Listener (Using hide/show to prevent Map crashes)
         bottomNavigationView.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_route) { // "Advisor" mapped to Home/Map
-                loadFragment(homeFragment);
+                switchFragment(homeFragment, "HOME");
                 tvPageTitle.setText("Ride Dashboard");
                 return true;
             } else if (id == R.id.nav_log) { // Travel Log
-                loadFragment(travelLogFragment);
+                switchFragment(travelLogFragment, "LOG");
                 tvPageTitle.setText("My Travel Log");
                 return true;
             } else if (id == R.id.nav_friends || id == R.id.nav_account) {
@@ -78,12 +82,36 @@ public class MainActivity extends AppCompatActivity {
         btnSettings.setOnClickListener(this::showSettingsMenu);
     }
 
-    // Smooth Transition Method
-    private void loadFragment(Fragment fragment) {
-        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+    // CRASH FIX: Safe Fragment Switching
+    // Instead of replacing (destroying) fragments, we hide/show them.
+    // This keeps the heavy Google Map alive in memory.
+    private void switchFragment(Fragment targetFragment, String tag) {
+        if (activeFragment == targetFragment) return;
+
+        FragmentManager fm = getSupportFragmentManager();
+        FragmentTransaction transaction = fm.beginTransaction();
         transaction.setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out);
-        transaction.replace(R.id.fragment_container, fragment);
+
+        // Hide the current fragment
+        if (activeFragment != null) {
+            transaction.hide(activeFragment);
+        }
+
+        // Show or Add the target fragment
+        if (!targetFragment.isAdded()) {
+            transaction.add(R.id.fragment_container, targetFragment, tag);
+        } else {
+            transaction.show(targetFragment);
+        }
+
+        activeFragment = targetFragment;
         transaction.commit();
+    }
+
+    public void navigateToHome() {
+        if (bottomNavigationView != null) {
+            bottomNavigationView.setSelectedItemId(R.id.nav_route);
+        }
     }
 
     private void showSettingsMenu(View view) {

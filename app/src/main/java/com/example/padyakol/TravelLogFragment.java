@@ -18,7 +18,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.padyakol.adapters.TravelLogAdapter;
 import com.example.padyakol.models.Ride;
 import com.google.android.gms.maps.MapsInitializer;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -41,11 +40,13 @@ public class TravelLogFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Pre-initialize maps to avoid layout inflation lag/crash in Adapter
-        try {
-            MapsInitializer.initialize(requireContext());
-        } catch (Exception e) {
-            e.printStackTrace();
+        // Pre-initialize maps using Application context if possible, or Activity
+        if (getContext() != null) {
+            try {
+                MapsInitializer.initialize(getContext().getApplicationContext());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -62,7 +63,8 @@ public class TravelLogFragment extends Fragment {
         // Setup Recycler
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         rideList = new ArrayList<>();
-        adapter = new TravelLogAdapter(getContext(), rideList);
+        // Use requireContext() for safety
+        adapter = new TravelLogAdapter(requireContext(), rideList);
         recyclerView.setAdapter(adapter);
 
         // Firebase
@@ -71,31 +73,40 @@ public class TravelLogFragment extends Fragment {
 
         // Button Listener: Go back to map
         btnBackToMap.setOnClickListener(v -> {
-            if (getActivity() != null) {
-                // Find the BottomNavigation in MainActivity and select the first item (Advisor/Home)
-                BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
-                if (bottomNav != null) {
-                    bottomNav.setSelectedItemId(R.id.nav_route);
-                }
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).navigateToHome();
             }
         });
 
+        // Always reload logs when view is created to get latest
         loadTravelLogs();
 
         return view;
+    }
+
+    // Refresh logs when the fragment becomes visible (since we use hide/show now)
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (!hidden) {
+            loadTravelLogs();
+        }
     }
 
     private void loadTravelLogs() {
         if (mAuth.getCurrentUser() == null) return;
         String userId = mAuth.getCurrentUser().getUid();
 
-        progressBar.setVisibility(View.VISIBLE);
+        // Only show progress if list is empty
+        if (rideList.isEmpty()) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
 
         db.collection("users").document(userId).collection("rides")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
-                    if (!isAdded()) return; // Fix crash if fragment removed before data loads
+                    if (!isAdded()) return;
 
                     progressBar.setVisibility(View.GONE);
                     rideList.clear();
@@ -104,7 +115,7 @@ public class TravelLogFragment extends Fragment {
                         List<Ride> rides = queryDocumentSnapshots.toObjects(Ride.class);
                         rideList.addAll(rides);
                         adapter.notifyDataSetChanged();
-                        tvEmptyState.setVisibility(View.GONE);
+                        tvEmptyState.setVisibility(View.   GONE);
                     } else {
                         tvEmptyState.setVisibility(View.VISIBLE);
                     }
@@ -112,7 +123,7 @@ public class TravelLogFragment extends Fragment {
                 .addOnFailureListener(e -> {
                     if (!isAdded()) return;
                     progressBar.setVisibility(View.GONE);
-                    Toast.makeText(getContext(), "Error loading logs", Toast.LENGTH_SHORT).show();
+                    // Toast.makeText(getContext(), "Error loading logs", Toast.LENGTH_SHORT).show();
                 });
     }
 }
