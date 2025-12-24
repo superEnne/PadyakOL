@@ -2,7 +2,6 @@ package com.example.padyakol;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
@@ -50,24 +49,23 @@ public class MainActivity extends AppCompatActivity {
         btnSettings = findViewById(R.id.btnSettings);
 
         // 3. Init Fragments
-        // We initialize them once and keep them alive
         homeFragment = new HomeFragment();
         travelLogFragment = new TravelLogFragment();
 
-        // 4. Default Load Home (Add it initially)
+        // 4. Default Load Home
         FragmentManager fm = getSupportFragmentManager();
         fm.beginTransaction().add(R.id.fragment_container, homeFragment, "HOME").commit();
         activeFragment = homeFragment;
         tvPageTitle.setText("Ride Dashboard");
 
-        // 5. Navigation Listener (Using hide/show to prevent Map crashes)
+        // 5. Navigation Listener
         bottomNavigationView.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.nav_route) { // "Advisor" mapped to Home/Map
+            if (id == R.id.nav_route) {
                 switchFragment(homeFragment, "HOME");
                 tvPageTitle.setText("Ride Dashboard");
                 return true;
-            } else if (id == R.id.nav_log) { // Travel Log
+            } else if (id == R.id.nav_log) {
                 switchFragment(travelLogFragment, "LOG");
                 tvPageTitle.setText("My Travel Log");
                 return true;
@@ -82,9 +80,6 @@ public class MainActivity extends AppCompatActivity {
         btnSettings.setOnClickListener(this::showSettingsMenu);
     }
 
-    // CRASH FIX: Safe Fragment Switching
-    // Instead of replacing (destroying) fragments, we hide/show them.
-    // This keeps the heavy Google Map alive in memory.
     private void switchFragment(Fragment targetFragment, String tag) {
         if (activeFragment == targetFragment) return;
 
@@ -92,12 +87,10 @@ public class MainActivity extends AppCompatActivity {
         FragmentTransaction transaction = fm.beginTransaction();
         transaction.setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out);
 
-        // Hide the current fragment
         if (activeFragment != null) {
             transaction.hide(activeFragment);
         }
 
-        // Show or Add the target fragment
         if (!targetFragment.isAdded()) {
             transaction.add(R.id.fragment_container, targetFragment, tag);
         } else {

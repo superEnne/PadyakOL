@@ -4,8 +4,6 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.SystemClock;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -56,7 +54,7 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
     private Chronometer chronometer;
     private Button btnRideToggle;
 
-    // Data (Preserved across tab switches because MainActivity keeps the Fragment instance)
+    // Data
     private boolean isTracking = false;
     private double sessionDistanceKm = 0.0;
     private Location lastLocation = null;
@@ -74,60 +72,56 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
-        // Initialize Firebase
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
         if (mAuth.getCurrentUser() != null) {
             userId = mAuth.getCurrentUser().getUid();
         }
 
-        // Initialize Views
         tvSessionDistance = view.findViewById(R.id.tvSessionDistance);
         tvCurrentSpeed = view.findViewById(R.id.tvCurrentSpeed);
         chronometer = view.findViewById(R.id.chronometer);
         btnRideToggle = view.findViewById(R.id.btnRideToggle);
 
-        // Restore UI state if we were tracking
         if (isTracking) {
             btnRideToggle.setText("Finish Ride");
             btnRideToggle.setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_light));
             tvSessionDistance.setText(String.format(Locale.US, "%.2f km", sessionDistanceKm));
-            // Restore timer logic: current time - (time we started)
-            chronometer.setBase(rideStartTime); // Fixed: Just set base to start time
+            chronometer.setBase(rideStartTime);
             chronometer.start();
         }
 
-        // Initialize Map
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
-
         btnRideToggle.setOnClickListener(v -> toggleTracking());
 
         return view;
     }
 
-    // --- FIX: Handle visibility changes cleanly ---
-    // Since we use hide/show, this fragment is NOT destroyed when switching tabs.
-    // This allows tracking to continue in the background!
+    // --- FIX: Manage visibility to prevent crashes with other maps ---
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
-        if (!hidden && mMap != null && isTracking) {
-            // If we come back and are tracking, force a redraw of the route just in case
-            drawRoute();
+
+        // When hidden, we don't explicitly pause the SupportMapFragment because it's tied to Activity lifecycle,
+        // BUT we stop updating the UI/Map Camera to save resources.
+
+        if (!hidden) {
+            // Returning to view
+            if (mMap != null && isTracking) {
+                drawRoute();
+            }
         }
     }
 
-    // We do NOT stop updates in onDestroyView anymore because hide/show doesn't call it.
-    // Updates only stop when the user clicks "Finish Ride".
     @Override
     public void onDestroy() {
         super.onDestroy();
-        stopLocationUpdates(); // Only stop if app is actually closed/destroyed
+        stopLocationUpdates();
     }
 
     private void toggleTracking() {
@@ -144,7 +138,6 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
             btnRideToggle.setText("Finish Ride");
             btnRideToggle.setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_light));
 
-            // Reset Data
             pathPoints.clear();
             if (currentPolyline != null) currentPolyline.remove();
             sessionDistanceKm = 0.0;
@@ -152,8 +145,7 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
             tvCurrentSpeed.setText("0.0 km/h");
             lastLocation = null;
 
-            // Start Timer
-            rideStartTime = SystemClock.elapsedRealtime(); // Use elapsedRealtime for Chronometer
+            rideStartTime = SystemClock.elapsedRealtime();
             chronometer.setBase(rideStartTime);
             chronometer.start();
 
@@ -165,7 +157,7 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
 
     private void stopRide() {
         isTracking = false;
-        stopLocationUpdates(); // Stop GPS
+        stopLocationUpdates();
         btnRideToggle.setText("Start Ride");
         btnRideToggle.setBackgroundResource(R.drawable.bg_button_gradient);
 
@@ -173,11 +165,8 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
         long elapsedMillis = SystemClock.elapsedRealtime() - chronometer.getBase();
         long durationSeconds = elapsedMillis / 1000;
 
-        // Calculate Average Speed
         double hours = durationSeconds / 3600.0;
         double avgSpeed = (hours > 0) ? (sessionDistanceKm / hours) : 0.0;
-
-        // Use standard system time for DB timestamp
         long dbTimestamp = System.currentTimeMillis();
 
         saveRideData(sessionDistanceKm, durationSeconds, dbTimestamp, avgSpeed, pathPoints);
@@ -189,15 +178,13 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
             return;
         }
 
-        // Convert LatLng to GeoPoint for Firestore
         List<GeoPoint> geoPoints = new ArrayList<>();
-        // Optimization: Only save every 3rd point to save DB space if route is long
+        // Optimize: Save every 3rd point
         for (int i = 0; i < points.size(); i++) {
-            if (i % 3 == 0) { // Take every 3rd point
+            if (i % 3 == 0) {
                 geoPoints.add(new GeoPoint(points.get(i).latitude, points.get(i).longitude));
             }
         }
-        // Ensure last point is added
         if (!points.isEmpty()) {
             LatLng last = points.get(points.size() - 1);
             geoPoints.add(new GeoPoint(last.latitude, last.longitude));
@@ -205,7 +192,6 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
 
         Ride newRide = new Ride(distance, duration, timestamp, avgSpeed, geoPoints);
 
-        // 1. Save to "rides" subcollection
         db.collection("users").document(userId).collection("rides")
                 .add(newRide)
                 .addOnSuccessListener(docRef -> {
@@ -213,11 +199,9 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
                         Toast.makeText(getContext(), "Ride saved to Travel Log!", Toast.LENGTH_SHORT).show();
                 });
 
-        // 2. Update Total Stats
         db.collection("users").document(userId)
                 .update("totalKmTraveled", FieldValue.increment(distance));
 
-        // Reset UI
         tvSessionDistance.setText("0.00 km");
         tvCurrentSpeed.setText("0.0 km/h");
         chronometer.setBase(SystemClock.elapsedRealtime());
@@ -231,9 +215,7 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locationResult) {
-                // Safety check: if fragment is not valid, do not touch UI
                 if (!isAdded() || locationResult == null) return;
-
                 for (Location location : locationResult.getLocations()) {
                     updateTracking(location);
                 }
@@ -241,7 +223,7 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
         };
 
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, android.os.Looper.getMainLooper());
         }
     }
 
@@ -254,23 +236,25 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
     private void updateTracking(Location location) {
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
-        // Ensure map is valid before animating
-        if (isTracking && mMap != null) {
-            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+        // Update Text Views always
+        float speedKmh = (location.hasSpeed()) ? location.getSpeed() * 3.6f : 0f;
+        tvCurrentSpeed.setText(String.format(Locale.US, "%.1f km/h", speedKmh));
 
-            // Speed Update (Convert m/s to km/h)
-            float speedKmh = (location.hasSpeed()) ? location.getSpeed() * 3.6f : 0f;
-            tvCurrentSpeed.setText(String.format(Locale.US, "%.1f km/h", speedKmh));
-
+        if (isTracking) {
             if (lastLocation != null) {
                 double distanceInMeters = lastLocation.distanceTo(location);
-                if (distanceInMeters > 2) { // Filter noise
+                if (distanceInMeters > 2) {
                     sessionDistanceKm += (distanceInMeters / 1000.0);
                     tvSessionDistance.setText(String.format(Locale.US, "%.2f km", sessionDistanceKm));
 
                     lastLocation = location;
                     pathPoints.add(latLng);
-                    drawRoute();
+
+                    // Only draw on map if fragment is visible
+                    if (!isHidden() && mMap != null) {
+                        mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+                        drawRoute();
+                    }
                 }
             } else {
                 lastLocation = location;
@@ -281,7 +265,6 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
 
     private void drawRoute() {
         if (mMap == null) return;
-
         if (currentPolyline != null) currentPolyline.remove();
         PolylineOptions polylineOptions = new PolylineOptions()
                 .addAll(pathPoints)
@@ -298,19 +281,12 @@ public class HomeFragment extends Fragment implements OnMapReadyCallback {
             if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 mMap.setMyLocationEnabled(true);
 
-                // If tracking was active (returning from another tab), restore the route
-                if (isTracking && !pathPoints.isEmpty()) {
-                    drawRoute();
-                    // Do NOT resume updates here, they are running continuously now
-                } else {
-                    // Center on user initially only if not already tracking
-                    fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
-                        if (location != null && !isTracking) {
-                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                                    new LatLng(location.getLatitude(), location.getLongitude()), 16f));
-                        }
-                    });
-                }
+                fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
+                    if (location != null && !isTracking) {
+                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                                new LatLng(location.getLatitude(), location.getLongitude()), 16f));
+                    }
+                });
             }
         }
     }
