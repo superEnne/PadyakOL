@@ -36,27 +36,35 @@ public class RideDetailDialogFragment extends DialogFragment implements OnMapRea
     private double distance;
     private double speed;
     private long duration;
-    private ArrayList<Double> latList;
-    private ArrayList<Double> lngList;
+    // Changed to double[] for better performance and stability
+    private double[] latArray;
+    private double[] lngArray;
 
     public static RideDetailDialogFragment newInstance(Ride ride) {
         RideDetailDialogFragment fragment = new RideDetailDialogFragment();
         Bundle args = new Bundle();
+        // Use safe getters if available, otherwise handle nulls manually
         args.putDouble("distance", ride.getDistanceKm());
         args.putDouble("speed", ride.getAvgSpeedKmh());
         args.putLong("duration", ride.getDurationSeconds());
 
-        // Convert GeoPoints to Arrays for passing
-        ArrayList<Double> lats = new ArrayList<>();
-        ArrayList<Double> lngs = new ArrayList<>();
-        if (ride.getRoutePoints() != null) {
-            for (GeoPoint gp : ride.getRoutePoints()) {
-                lats.add(gp.getLatitude());
-                lngs.add(gp.getLongitude());
+        // Convert List<GeoPoint> to double[] (primitive arrays)
+        // This avoids Serializable overhead and prevents crashes with large data
+        if (ride.getRoutePoints() != null && !ride.getRoutePoints().isEmpty()) {
+            int size = ride.getRoutePoints().size();
+            double[] lats = new double[size];
+            double[] lngs = new double[size];
+
+            for (int i = 0; i < size; i++) {
+                GeoPoint gp = ride.getRoutePoints().get(i);
+                if (gp != null) {
+                    lats[i] = gp.getLatitude();
+                    lngs[i] = gp.getLongitude();
+                }
             }
+            args.putDoubleArray("lats", lats);
+            args.putDoubleArray("lngs", lngs);
         }
-        args.putSerializable("lats", lats);
-        args.putSerializable("lngs", lngs);
 
         fragment.setArguments(args);
         return fragment;
@@ -67,11 +75,11 @@ public class RideDetailDialogFragment extends DialogFragment implements OnMapRea
         super.onCreate(savedInstanceState);
         setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Light_NoActionBar_Fullscreen);
         if (getArguments() != null) {
-            distance = getArguments().getDouble("distance");
-            speed = getArguments().getDouble("speed");
-            duration = getArguments().getLong("duration");
-            latList = (ArrayList<Double>) getArguments().getSerializable("lats");
-            lngList = (ArrayList<Double>) getArguments().getSerializable("lngs");
+            distance = getArguments().getDouble("distance", 0.0);
+            speed = getArguments().getDouble("speed", 0.0);
+            duration = getArguments().getLong("duration", 0);
+            latArray = getArguments().getDoubleArray("lats");
+            lngArray = getArguments().getDoubleArray("lngs");
         }
     }
 
@@ -93,10 +101,12 @@ public class RideDetailDialogFragment extends DialogFragment implements OnMapRea
         tvDist.setText(String.format("%.2f km", distance));
         tvSpeed.setText(String.format("%.1f km/h", speed));
 
-        // Setup Map
+        // Setup Map safely
         mapView = view.findViewById(R.id.mapViewDetail);
-        mapView.onCreate(savedInstanceState);
-        mapView.getMapAsync(this);
+        if (mapView != null) {
+            mapView.onCreate(savedInstanceState);
+            mapView.getMapAsync(this);
+        }
 
         return view;
     }
@@ -104,57 +114,67 @@ public class RideDetailDialogFragment extends DialogFragment implements OnMapRea
     @Override
     public void onMapReady(@NonNull GoogleMap map) {
         googleMap = map;
-        drawRoute();
+        if (latArray != null && lngArray != null && latArray.length > 0) {
+            drawRoute();
+        }
     }
 
     private void drawRoute() {
-        if (googleMap == null || latList == null || latList.isEmpty()) return;
-
-        PolylineOptions options = new PolylineOptions()
-                .width(15)
-                .color(0xFF2196F3) // Padyak Accent Blue
-                .geodesic(true);
-
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-
-        for (int i = 0; i < latList.size(); i++) {
-            LatLng point = new LatLng(latList.get(i), lngList.get(i));
-            options.add(point);
-            builder.include(point);
-        }
-
-        googleMap.addPolyline(options);
-
-        // Move camera nicely
         try {
-            LatLngBounds bounds = builder.build();
-            // Add padding to edges
-            googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100));
-        } catch (Exception e) {
-            // Fallback if bounds fail (e.g. single point)
-            if (!latList.isEmpty()) {
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                        new LatLng(latList.get(0), lngList.get(0)), 15f));
+            if (googleMap == null || latArray == null || latArray.length == 0) return;
+
+            PolylineOptions options = new PolylineOptions()
+                    .width(15)
+                    .color(0xFF2196F3) // Padyak Accent Blue
+                    .geodesic(true);
+
+            LatLngBounds.Builder builder = new LatLngBounds.Builder();
+            boolean hasPoints = false;
+
+            for (int i = 0; i < latArray.length; i++) {
+                // simple check to avoid 0,0 if something went wrong during conversion
+                if (latArray[i] != 0 || lngArray[i] != 0) {
+                    LatLng point = new LatLng(latArray[i], lngArray[i]);
+                    options.add(point);
+                    builder.include(point);
+                    hasPoints = true;
+                }
             }
+
+            if (hasPoints) {
+                googleMap.addPolyline(options);
+                try {
+                    LatLngBounds bounds = builder.build();
+                    // Add padding to edges
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100));
+                } catch (IllegalStateException e) {
+                    // Fallback if bounds fail (e.g. all points were identical)
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                            new LatLng(latArray[0], lngArray[0]), 15f));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Fail silently on map drawing error rather than crashing app
         }
     }
 
     // --- Lifecycle forwarding for MapView is CRUCIAL ---
     @Override
-    public void onStart() { super.onStart(); mapView.onStart(); }
+    public void onStart() { super.onStart(); if(mapView!=null) mapView.onStart(); }
     @Override
-    public void onResume() { super.onResume(); mapView.onResume(); }
+    public void onResume() { super.onResume(); if(mapView!=null) mapView.onResume(); }
     @Override
-    public void onPause() { super.onPause(); mapView.onPause(); }
+    public void onPause() { super.onPause(); if(mapView!=null) mapView.onPause(); }
     @Override
-    public void onStop() { super.onStop(); mapView.onStop(); }
+    public void onStop() { super.onStop(); if(mapView!=null) mapView.onStop(); }
     @Override
-    public void onDestroy() { super.onDestroy(); mapView.onDestroy(); }
+    public void onDestroy() { super.onDestroy(); if(mapView!=null) mapView.onDestroy(); }
     @Override
-    public void onLowMemory() { super.onLowMemory(); mapView.onLowMemory(); }
+    public void onLowMemory() { super.onLowMemory(); if(mapView!=null) mapView.onLowMemory(); }
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        mapView.onSaveInstanceState(outState);
+        if(mapView!=null) mapView.onSaveInstanceState(outState);
     }
 }
